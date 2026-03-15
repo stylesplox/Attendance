@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { uploadAttendance } from '../api.js';
+import { useState, useEffect } from 'react';
+import { uploadAttendance, getFellowships } from '../api.js';
 
 function getMostRecentSunday() {
   const today = new Date();
@@ -12,18 +12,29 @@ function getMostRecentSunday() {
 export default function UploadPanel({ onUploaded }) {
   const [date, setDate] = useState(getMostRecentSunday());
   const [file, setFile] = useState(null);
+  const [fellowshipId, setFellowshipId] = useState('');
+  const [fellowships, setFellowships] = useState([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    getFellowships()
+      .then(data => {
+        setFellowships(data);
+        if (data.length > 0) setFellowshipId(String(data[0].Program_ID));
+      })
+      .catch(() => {});
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !fellowshipId) return;
     setLoading(true);
     setResult(null);
     setError('');
     try {
-      const data = await uploadAttendance(file, date);
+      const data = await uploadAttendance(file, date, fellowshipId);
       setResult(data);
       onUploaded();
     } catch (err) {
@@ -50,6 +61,23 @@ export default function UploadPanel({ onUploaded }) {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Fellowship</label>
+          <select
+            value={fellowshipId}
+            onChange={e => setFellowshipId(e.target.value)}
+            required
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-[38px]"
+          >
+            {fellowships.length === 0 && <option value="">Loading...</option>}
+            {fellowships.map(f => (
+              <option key={f.Program_ID} value={String(f.Program_ID)}>
+                {f.Fellowship}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Excel File (.xlsx / .xls)
           </label>
@@ -64,7 +92,7 @@ export default function UploadPanel({ onUploaded }) {
 
         <button
           type="submit"
-          disabled={loading || !file}
+          disabled={loading || !file || !fellowshipId}
           className="bg-blue-700 hover:bg-blue-600 disabled:bg-blue-400 text-white font-medium px-5 py-2 rounded-lg text-sm transition"
         >
           {loading ? 'Uploading...' : 'Upload'}

@@ -18,10 +18,23 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Unauthorized' });
 }
 
+router.get('/fellowships', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM Fellowships ORDER BY Program_ID');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT a.Date, a.SN, a.Fullname FROM Attendance a ORDER BY a.Date DESC'
+      `SELECT a.Date, a.SN, a.Fullname, a.Fellowship_id, f.Fellowship AS Fellowship_name
+       FROM Attendance a
+       LEFT JOIN Fellowships f ON f.Program_ID = a.Fellowship_id
+       ORDER BY a.Date DESC`
     );
     // Format dates as YYYY-MM-DD strings to avoid timezone shifts
     const formatted = rows.map(r => ({
@@ -39,8 +52,9 @@ router.get('/', async (req, res) => {
 
 router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
   try {
-    const { date } = req.body;
+    const { date, fellowship_id } = req.body;
     if (!date) return res.status(400).json({ error: 'Date is required' });
+    if (!fellowship_id) return res.status(400).json({ error: 'Fellowship is required' });
     if (!req.file) return res.status(400).json({ error: 'File is required' });
 
     // Parse Excel
@@ -105,9 +119,9 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
     // Bulk insert matched records
     let inserted = 0;
     if (members.length > 0) {
-      const values = members.map(m => [date, m.SN, m.Full_Name]);
+      const values = members.map(m => [date, m.SN, m.Full_Name, fellowship_id]);
       const [result] = await pool.query(
-        'INSERT IGNORE INTO Attendance (Date, SN, Fullname) VALUES ?',
+        'INSERT IGNORE INTO Attendance (Date, SN, Fullname, Fellowship_id) VALUES ?',
         [values]
       );
       inserted = result.affectedRows;

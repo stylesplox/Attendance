@@ -36,9 +36,14 @@ export async function getAttendance() {
   return request('/attendance');
 }
 
-export async function uploadAttendance(file, date) {
+export async function getFellowships() {
+  return request('/attendance/fellowships');
+}
+
+export async function uploadAttendance(file, date, fellowshipId) {
   const form = new FormData();
   form.append('file', file);
   form.append('date', date);
+  form.append('fellowship_id', fellowshipId);
   return request('/attendance/upload', { method: 'POST', body: form });
 }

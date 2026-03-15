@@ -20,18 +20,26 @@ export default function MatrixView() {
   if (loading) return <p className="text-gray-500">Loading...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
-  // Build sorted list of unique dates
-  const dates = [...new Set(attendance.map(r => r.Date))].sort();
+  // Build sorted unique (Date, Fellowship_id) sessions as columns
+  const sessionMap = new Map();
+  for (const r of attendance) {
+    const key = `${r.Date}__${r.Fellowship_id ?? ''}`;
+    if (!sessionMap.has(key)) {
+      const fellowship = r.Fellowship_name || (r.Fellowship_id ? `Fellowship ${r.Fellowship_id}` : '');
+      sessionMap.set(key, { key, date: r.Date, fellowship, fellowshipId: r.Fellowship_id });
+    }
+  }
+  const sessions = [...sessionMap.values()].sort((a, b) => a.date.localeCompare(b.date));
 
-  // Build attendance set for O(1) lookup
-  const attended = new Set(attendance.map(r => `${r.SN}|${r.Date}`));
+  // Build attendance set for O(1) lookup: "SN|Date|Fellowship_id"
+  const attended = new Set(attendance.map(r => `${r.SN}|${r.Date}|${r.Fellowship_id ?? ''}`));
 
   function formatDate(d) {
     const [y, m, day] = d.split('-');
     return `${m}/${day}/${y.slice(2)}`;
   }
 
-  if (dates.length === 0) {
+  if (sessions.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
         No attendance records yet. Upload an Excel file to get started.
@@ -48,12 +56,15 @@ export default function MatrixView() {
               <th className="sticky top-0 left-0 z-20 bg-blue-700 text-white px-4 py-3 text-left font-semibold min-w-[180px]">
                 Member
               </th>
-              {dates.map(d => (
+              {sessions.map(s => (
                 <th
-                  key={d}
-                  className="sticky top-0 z-10 bg-blue-700 text-white px-3 py-3 text-center font-semibold whitespace-nowrap min-w-[80px]"
+                  key={s.key}
+                  className="sticky top-0 z-10 bg-blue-700 text-white px-3 py-3 text-center font-semibold whitespace-nowrap min-w-[90px]"
                 >
-                  {formatDate(d)}
+                  <div>{formatDate(s.date)}</div>
+                  {s.fellowship && (
+                    <div className="text-xs font-normal text-blue-200 mt-0.5">{s.fellowship}</div>
+                  )}
                 </th>
               ))}
               <th className="sticky top-0 z-10 bg-blue-700 text-white px-3 py-3 text-center font-semibold min-w-[60px]">
@@ -63,7 +74,7 @@ export default function MatrixView() {
           </thead>
           <tbody>
             {members.map((m, i) => {
-              const count = dates.filter(d => attended.has(`${m.SN}|${d}`)).length;
+              const count = sessions.filter(s => attended.has(`${m.SN}|${s.date}|${s.fellowshipId ?? ''}`)).length;
               return (
                 <tr
                   key={m.SN}
@@ -72,9 +83,9 @@ export default function MatrixView() {
                   <td className="sticky left-0 z-10 px-4 py-2 font-medium text-gray-800 border-r border-gray-200 bg-inherit">
                     {m.Full_Name}
                   </td>
-                  {dates.map(d => (
-                    <td key={d} className="px-3 py-2 text-center text-green-600 font-bold">
-                      {attended.has(`${m.SN}|${d}`) ? '✓' : ''}
+                  {sessions.map(s => (
+                    <td key={s.key} className="px-3 py-2 text-center text-green-600 font-bold">
+                      {attended.has(`${m.SN}|${s.date}|${s.fellowshipId ?? ''}`) ? '✓' : ''}
                     </td>
                   ))}
                   <td className="px-3 py-2 text-center font-semibold text-blue-700">
@@ -89,10 +100,10 @@ export default function MatrixView() {
               <td className="sticky left-0 z-10 px-4 py-2 text-gray-700 border-r border-gray-200 bg-blue-50">
                 Total Present
               </td>
-              {dates.map(d => {
-                const count = members.filter(m => attended.has(`${m.SN}|${d}`)).length;
+              {sessions.map(s => {
+                const count = members.filter(m => attended.has(`${m.SN}|${s.date}|${s.fellowshipId ?? ''}`)).length;
                 return (
-                  <td key={d} className="px-3 py-2 text-center text-blue-700">
+                  <td key={s.key} className="px-3 py-2 text-center text-blue-700">
                     {count}
                   </td>
                 );
