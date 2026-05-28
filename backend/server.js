@@ -5,6 +5,7 @@ import session from 'express-session';
 import authRouter from './routes/auth.js';
 import membersRouter from './routes/members.js';
 import attendanceRouter from './routes/attendance.js';
+import offendersRouter from './routes/offenders.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,7 @@ app.use(session({
 app.use('/api/auth', authRouter);
 app.use('/api/members', membersRouter);
 app.use('/api/attendance', attendanceRouter);
+app.use('/api/offenders', offendersRouter);
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
