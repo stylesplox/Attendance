@@ -40,6 +40,23 @@ export async function getFellowships() {
   return request('/attendance/fellowships');
 }
 
+export async function getNonComplianceTypes() {
+  return request('/offenders/types');
+}
+
+export async function getOffenders() {
+  return request('/offenders');
+}
+
+export async function uploadOffenders(file, date, fellowshipId, nonComplianceId) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('date', date);
+  form.append('fellowship_id', fellowshipId);
+  form.append('non_compliance_id', nonComplianceId);
+  return request('/offenders/upload', { method: 'POST', body: form });
+}
+
 export async function uploadAttendance(file, date, fellowshipId) {
   const form = new FormData();
   form.append('file', file);
