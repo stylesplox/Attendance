@@ -6,6 +6,7 @@ export default function MatrixView() {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     Promise.all([getMembers(), getAttendance()])
@@ -20,9 +21,15 @@ export default function MatrixView() {
   if (loading) return <p className="text-gray-500">Loading...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
+  // Derive available years from all attendance records
+  const years = [...new Set(attendance.map(r => r.Date.slice(0, 4)))].sort().reverse();
+
+  // Filter attendance to the selected year
+  const yearAttendance = attendance.filter(r => r.Date.startsWith(String(selectedYear)));
+
   // Build sorted unique (Date, Fellowship_id) sessions as columns
   const sessionMap = new Map();
-  for (const r of attendance) {
+  for (const r of yearAttendance) {
     const key = `${r.Date}__${r.Fellowship_id ?? ''}`;
     if (!sessionMap.has(key)) {
       const fellowship = r.Fellowship_name || (r.Fellowship_id ? `Fellowship ${r.Fellowship_id}` : '');
@@ -32,23 +39,42 @@ export default function MatrixView() {
   const sessions = [...sessionMap.values()].sort((a, b) => a.date.localeCompare(b.date));
 
   // Build attendance set for O(1) lookup: "SN|Date|Fellowship_id"
-  const attended = new Set(attendance.map(r => `${r.SN}|${r.Date}|${r.Fellowship_id ?? ''}`));
+  const attended = new Set(yearAttendance.map(r => `${r.SN}|${r.Date}|${r.Fellowship_id ?? ''}`));
 
   function formatDate(d) {
     const [y, m, day] = d.split('-');
     return `${m}/${day}/${y.slice(2)}`;
   }
 
+  const yearSelector = years.length > 0 && (
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200">
+      <label className="text-sm font-medium text-gray-600">Year:</label>
+      <select
+        value={selectedYear}
+        onChange={e => setSelectedYear(Number(e.target.value))}
+        className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        {years.map(y => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   if (sessions.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-        No attendance records yet. Upload an Excel file to get started.
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        {yearSelector}
+        <div className="p-8 text-center text-gray-500">
+          No attendance records for {selectedYear}. Upload an Excel file to get started.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden">
+      {yearSelector}
       <div className="overflow-auto max-h-[70vh]">
         <table className="border-collapse text-sm min-w-max">
           <thead>
@@ -109,7 +135,7 @@ export default function MatrixView() {
                 );
               })}
               <td className="px-3 py-2 text-center text-blue-700">
-                {attendance.length}
+                {yearAttendance.length}
               </td>
             </tr>
           </tfoot>

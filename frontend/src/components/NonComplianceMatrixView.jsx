@@ -6,6 +6,7 @@ export default function NonComplianceMatrixView() {
   const [offenders, setOffenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     Promise.all([getMembers(), getOffenders()])
@@ -17,9 +18,15 @@ export default function NonComplianceMatrixView() {
   if (loading) return <p className="text-gray-500">Loading...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
+  // Derive available years from all offender records
+  const years = [...new Set(offenders.map(r => r.Date.slice(0, 4)))].sort().reverse();
+
+  // Filter offenders to the selected year
+  const yearOffenders = offenders.filter(r => r.Date.startsWith(String(selectedYear)));
+
   // Build unique sessions: (Date, Fellowship_ID, Non_Compliance_Id)
   const sessionMap = new Map();
-  for (const r of offenders) {
+  for (const r of yearOffenders) {
     const key = `${r.Date}__${r.Fellowship_ID}__${r.Non_Compliance_Id}`;
     if (!sessionMap.has(key)) {
       sessionMap.set(key, {
@@ -36,7 +43,7 @@ export default function NonComplianceMatrixView() {
 
   // Lookup set: "SN|Date|Fellowship_ID|Non_Compliance_Id"
   const offenderSet = new Set(
-    offenders.map(r => `${r.SN}|${r.Date}|${r.Fellowship_ID}|${r.Non_Compliance_Id}`)
+    yearOffenders.map(r => `${r.SN}|${r.Date}|${r.Fellowship_ID}|${r.Non_Compliance_Id}`)
   );
 
   function formatDate(d) {
@@ -44,16 +51,35 @@ export default function NonComplianceMatrixView() {
     return `${day}/${m}/${y.slice(2)}`;
   }
 
+  const yearSelector = years.length > 0 && (
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200">
+      <label className="text-sm font-medium text-gray-600">Year:</label>
+      <select
+        value={selectedYear}
+        onChange={e => setSelectedYear(Number(e.target.value))}
+        className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500"
+      >
+        {years.map(y => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+    </div>
+  );
+
   if (sessions.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-        No non-compliance records yet. Upload an Excel file to get started.
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        {yearSelector}
+        <div className="p-8 text-center text-gray-500">
+          No non-compliance records for {selectedYear}. Upload an Excel file to get started.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden">
+      {yearSelector}
       <div className="overflow-auto max-h-[70vh]">
         <table className="border-collapse text-sm min-w-max">
           <thead>
@@ -118,7 +144,7 @@ export default function NonComplianceMatrixView() {
                   </td>
                 );
               })}
-              <td className="px-3 py-2 text-center text-red-700">{offenders.length}</td>
+              <td className="px-3 py-2 text-center text-red-700">{yearOffenders.length}</td>
             </tr>
           </tfoot>
         </table>
