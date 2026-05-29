@@ -83,7 +83,7 @@ function sessionKey(r) {
 function formatDate(d) {
   if (!d) return '';
   const [y, m, day] = d.split('-');
-  return `${m}/${day}/${y}`;
+  return `${day}/${m}/${y}`;
 }
 
 function buildSessionKeys(data) {

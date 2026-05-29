@@ -43,7 +43,7 @@ export default function MatrixView() {
 
   function formatDate(d) {
     const [y, m, day] = d.split('-');
-    return `${m}/${day}/${y.slice(2)}`;
+    return `${day}/${m}/${y.slice(2)}`;
   }
 
   const yearSelector = years.length > 0 && (
